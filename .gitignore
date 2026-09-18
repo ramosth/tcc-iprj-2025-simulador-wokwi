@@ -1,0 +1,11 @@
+# Build do Arduino CLI
+build/
+
+# VS Code (opcional manter as configs do projeto)
+.vscode/*
+!.vscode/settings.json
+
+# Sistema
+*.log
+Thumbs.db
+.DS_Store
