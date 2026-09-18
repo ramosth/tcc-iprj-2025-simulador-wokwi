@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "author": "Thamires Ramos - Circuito TCC Organizado",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": -4.76, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": -45, "left": -170, "attrs": {} },
+    {
+      "type": "wokwi-led",
+      "id": "led_verde",
+      "top": 110,
+      "left": -160,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_amarelo",
+      "top": 160,
+      "left": -160,
+      "attrs": { "color": "yellow" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_vermelho",
+      "top": 210,
+      "left": -160,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer",
+      "top": 223.2,
+      "left": 136.2,
+      "attrs": { "volume": "0.1" }
+    },
+    { "type": "wokwi-resistor", "id": "r1", "top": 150, "left": -90, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 200, "left": -90, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r3", "top": 250, "left": -90, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:GND.1", "pot1:GND", "black", [ "h-30", "v-30" ] ],
+    [ "esp:3V3", "pot1:VCC", "red", [ "h-50", "v-40" ] ],
+    [ "esp:34", "pot1:SIG", "blue", [ "h-20", "v-10" ] ],
+    [ "esp:18", "r1:2", "green", [ "h-10" ] ],
+    [ "r1:1", "led_verde:A", "green", [ "h-10" ] ],
+    [ "esp:14", "r2:2", "orange", [ "h-10" ] ],
+    [ "r2:1", "led_amarelo:A", "orange", [ "h-10" ] ],
+    [ "esp:27", "r3:2", "red", [ "h-10" ] ],
+    [ "r3:1", "led_vermelho:A", "red", [ "h-10" ] ],
+    [ "led_verde:C", "esp:GND.1", "black", [ "h-30", "v-90", "h140" ] ],
+    [ "led_amarelo:C", "esp:GND.1", "black", [ "h-30", "v-140", "h140" ] ],
+    [ "led_vermelho:C", "esp:GND.1", "black", [ "h-30", "v-190", "h140" ] ],
+    [ "esp:26", "buzzer:1", "purple", [ "h20", "v235", "h20" ] ],
+    [ "buzzer:2", "esp:GND.2", "black", [ "v60", "h-75", "v-125" ] ]
+  ],
+  "dependencies": {}
+}

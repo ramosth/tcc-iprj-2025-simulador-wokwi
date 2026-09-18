@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "",
+  "fqbn": "esp32:esp32:esp32",
+  "hardwareFolders": "C:\\Users\\usuario\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\3.3.11,C:\\Users\\usuario\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\3.3.11",
+  "otherLibrariesFolders": "D:\\Users\\thami\\OneDrive\\Documents\\Arduino\\libraries",
+  "sketchLocation": "D:\\Users\\thami\\Documents\\github\\projeto_tcc_wokwi\\sketch"
+}

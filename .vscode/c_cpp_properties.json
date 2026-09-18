@@ -1,0 +1,18 @@
+{
+    "configurations": [
+        {
+            "name": "Wokwi/ESP32",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "ESP32",
+                "ARDUINO=10800"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}
