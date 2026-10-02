@@ -3,57 +3,553 @@
   "author": "Thamires Ramos - Circuito TCC Organizado",
   "editor": "wokwi",
   "parts": [
-    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": -4.76, "attrs": {} },
-    { "type": "wokwi-potentiometer", "id": "pot1", "top": -45, "left": -170, "attrs": {} },
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot1",
+      "top": -90,
+      "left": -230,
+      "attrs": {
+        "value": "1"
+      }
+    },
     {
       "type": "wokwi-led",
       "id": "led_verde",
-      "top": 110,
-      "left": -160,
-      "attrs": { "color": "green" }
+      "top": 348,
+      "left": -280,
+      "attrs": {
+        "color": "green"
+      }
     },
     {
       "type": "wokwi-led",
       "id": "led_amarelo",
-      "top": 160,
-      "left": -160,
-      "attrs": { "color": "yellow" }
+      "top": 278,
+      "left": -280,
+      "attrs": {
+        "color": "yellow"
+      }
     },
     {
       "type": "wokwi-led",
       "id": "led_vermelho",
-      "top": 210,
-      "left": -160,
-      "attrs": { "color": "red" }
+      "top": 208,
+      "left": -280,
+      "attrs": {
+        "color": "red"
+      }
     },
     {
       "type": "wokwi-buzzer",
       "id": "buzzer",
-      "top": 223.2,
-      "left": 136.2,
-      "attrs": { "volume": "0.1" }
+      "top": 123.6,
+      "left": -280,
+      "attrs": {
+        "volume": "0.1"
+      },
+      "rotate": 180
     },
-    { "type": "wokwi-resistor", "id": "r1", "top": 150, "left": -90, "attrs": { "value": "220" } },
-    { "type": "wokwi-resistor", "id": "r2", "top": 200, "left": -90, "attrs": { "value": "220" } },
-    { "type": "wokwi-resistor", "id": "r3", "top": 250, "left": -90, "attrs": { "value": "220" } }
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 384.35,
+      "left": -225,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 314.35,
+      "left": -225,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r3",
+      "top": 244.35,
+      "left": -225,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "sw_rede",
+      "top": 70,
+      "left": 262,
+      "attrs": {
+        "value": "1",
+        "bounce": "0"
+      },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_rede",
+      "top": -2,
+      "left": 330,
+      "attrs": {
+        "color": "blue",
+        "flip": "1"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_backup",
+      "top": 278,
+      "left": 330,
+      "attrs": {
+        "color": "white",
+        "flip": "1"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_atencao",
+      "top": 218,
+      "left": 330,
+      "attrs": {
+        "color": "purple",
+        "flip": "1"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r4",
+      "top": 34.31,
+      "left": 260,
+      "attrs": {
+        "value": "220"
+      },
+      "rotate": 180
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r5",
+      "top": 314.31,
+      "left": 260,
+      "attrs": {
+        "value": "220"
+      },
+      "rotate": 180
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r6",
+      "top": 254.31,
+      "left": 260,
+      "attrs": {
+        "value": "220"
+      },
+      "rotate": 180
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_bateria",
+      "top": 125,
+      "left": 262,
+      "attrs": {
+        "value": "1023"
+      },
+      "rotate": 90
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_esp",
+      "top": 222,
+      "left": 8,
+      "attrs": {
+        "text": "ESP32\nDevKit C V4"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_higrometro",
+      "top": -118,
+      "left": -262,
+      "attrs": {
+        "text": "HIGRÔMETRO (Umidade do solo)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_buzzer",
+      "top": 150,
+      "left": -200,
+      "attrs": {
+        "text": "BUZZER"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_led_vermelho",
+      "top": 220,
+      "left": -425,
+      "attrs": {
+        "text": "LED VERMELHO\n(Crítico)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_led_amarelo",
+      "top": 290,
+      "left": -425,
+      "attrs": {
+        "text": "LED AMARELO\n(ATENÇÃO)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_led_verde",
+      "top": 360,
+      "left": -425,
+      "attrs": {
+        "text": "LED VERDE\n(NORMAL)"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_led_rede",
+      "top": 32,
+      "left": 405,
+      "attrs": {
+        "text": "LED REDE"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_sw_rede",
+      "top": 80,
+      "left": 405,
+      "attrs": {
+        "text": "Chave — Falha da rede elétrica"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_pot_bateria",
+      "top": 155,
+      "left": 405,
+      "attrs": {
+        "text": "Potenciômetro — Estado da bateria"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_led_atencao",
+      "top": 252,
+      "left": 405,
+      "attrs": {
+        "text": "LED ATENÇÃO"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "txt_led_backup",
+      "top": 312,
+      "left": 405,
+      "attrs": {
+        "text": "LED BACKUP"
+      }
+    }
   ],
   "connections": [
-    [ "esp:TX", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    [ "esp:GND.1", "pot1:GND", "black", [ "h-30", "v-30" ] ],
-    [ "esp:3V3", "pot1:VCC", "red", [ "h-50", "v-40" ] ],
-    [ "esp:34", "pot1:SIG", "blue", [ "h-20", "v-10" ] ],
-    [ "esp:18", "r1:2", "green", [ "h-10" ] ],
-    [ "r1:1", "led_verde:A", "green", [ "h-10" ] ],
-    [ "esp:14", "r2:2", "orange", [ "h-10" ] ],
-    [ "r2:1", "led_amarelo:A", "orange", [ "h-10" ] ],
-    [ "esp:27", "r3:2", "red", [ "h-10" ] ],
-    [ "r3:1", "led_vermelho:A", "red", [ "h-10" ] ],
-    [ "led_verde:C", "esp:GND.1", "black", [ "h-30", "v-90", "h140" ] ],
-    [ "led_amarelo:C", "esp:GND.1", "black", [ "h-30", "v-140", "h140" ] ],
-    [ "led_vermelho:C", "esp:GND.1", "black", [ "h-30", "v-190", "h140" ] ],
-    [ "esp:26", "buzzer:1", "purple", [ "h20", "v235", "h20" ] ],
-    [ "buzzer:2", "esp:GND.2", "black", [ "v60", "h-75", "v-125" ] ]
+    [
+      "esp:TX",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "esp:GND.1",
+      "pot1:GND",
+      "black",
+      [
+        "h-44.61",
+        "v180.4",
+        "h-260",
+        "v-340.5",
+        "h99"
+      ]
+    ],
+    [
+      "esp:3V3",
+      "pot1:VCC",
+      "red",
+      [
+        "h-185.61"
+      ]
+    ],
+    [
+      "esp:34",
+      "pot1:SIG",
+      "blue",
+      [
+        "h-195.61"
+      ]
+    ],
+    [
+      "esp:18",
+      "r1:2",
+      "green",
+      [
+        "h11.24",
+        "v284.4"
+      ]
+    ],
+    [
+      "r1:1",
+      "led_verde:A",
+      "green",
+      []
+    ],
+    [
+      "esp:14",
+      "r2:2",
+      "orange",
+      [
+        "h-94.61",
+        "v185.6"
+      ]
+    ],
+    [
+      "r2:1",
+      "led_amarelo:A",
+      "orange",
+      []
+    ],
+    [
+      "esp:27",
+      "r3:2",
+      "red",
+      [
+        "h-114.61",
+        "v125.2"
+      ]
+    ],
+    [
+      "r3:1",
+      "led_vermelho:A",
+      "red",
+      []
+    ],
+    [
+      "led_verde:C",
+      "esp:GND.1",
+      "black",
+      [
+        "h-35",
+        "v-56",
+        "h260",
+        "v-180.4"
+      ]
+    ],
+    [
+      "led_amarelo:C",
+      "esp:GND.1",
+      "black",
+      [
+        "h-35",
+        "v14",
+        "h260",
+        "v-180.4"
+      ]
+    ],
+    [
+      "led_vermelho:C",
+      "esp:GND.1",
+      "black",
+      [
+        "h-35",
+        "v84",
+        "h260",
+        "v-180.4"
+      ]
+    ],
+    [
+      "esp:26",
+      "buzzer:1",
+      "purple",
+      []
+    ],
+    [
+      "buzzer:2",
+      "esp:GND.1",
+      "black",
+      [
+        "h-47.25",
+        "v218.81",
+        "h260",
+        "v-180.4"
+      ]
+    ],
+    [
+      "sw_rede:1",
+      "esp:GND.3",
+      "black",
+      [
+        "h-9.51",
+        "v-19.88",
+        "h138",
+        "v292",
+        "h-265",
+        "v-263.6"
+      ]
+    ],
+    [
+      "sw_rede:3",
+      "esp:3V3",
+      "red",
+      [
+        "h-50.51",
+        "v-108.88",
+        "h-219",
+        "v40.8"
+      ]
+    ],
+    [
+      "sw_rede:2",
+      "esp:32",
+      "green",
+      [
+        "h-34.51",
+        "v-115.38",
+        "h-251",
+        "v114.4"
+      ]
+    ],
+    [
+      "esp:25",
+      "r4:2",
+      "blue",
+      [
+        "h-36.61",
+        "v-141.6",
+        "h267",
+        "v76"
+      ]
+    ],
+    [
+      "r4:1",
+      "led_rede:A",
+      "blue",
+      []
+    ],
+    [
+      "led_rede:C",
+      "esp:GND.3",
+      "black",
+      [
+        "h35",
+        "v310",
+        "h-265",
+        "v-263.6"
+      ]
+    ],
+    [
+      "esp:22",
+      "r5:2",
+      "gray",
+      [
+        "h79.24",
+        "v272"
+      ]
+    ],
+    [
+      "r5:1",
+      "led_backup:A",
+      "gray",
+      []
+    ],
+    [
+      "led_backup:C",
+      "esp:GND.3",
+      "black",
+      [
+        "h35",
+        "v30",
+        "h-265",
+        "v-263.6"
+      ]
+    ],
+    [
+      "esp:23",
+      "r6:2",
+      "purple",
+      [
+        "h89.24",
+        "v221.6"
+      ]
+    ],
+    [
+      "r6:1",
+      "led_atencao:A",
+      "purple",
+      []
+    ],
+    [
+      "led_atencao:C",
+      "esp:GND.3",
+      "black",
+      [
+        "h35",
+        "v90",
+        "h-265",
+        "v-263.6"
+      ]
+    ],
+    [
+      "pot_bateria:GND",
+      "esp:GND.3",
+      "black",
+      [
+        "h-17.09",
+        "v-39",
+        "h138",
+        "v235",
+        "h-265",
+        "v-263.6"
+      ]
+    ],
+    [
+      "pot_bateria:VCC",
+      "esp:3V3",
+      "red",
+      [
+        "h-58.09",
+        "v-186",
+        "h-219",
+        "v40.8"
+      ]
+    ],
+    [
+      "pot_bateria:SIG",
+      "esp:35",
+      "orange",
+      [
+        "h-50.09",
+        "v-184",
+        "h-235",
+        "v96.8"
+      ]
+    ]
   ],
   "dependencies": {}
 }

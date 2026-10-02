@@ -3,96 +3,19 @@
  *  SISTEMA DE MONITORAMENTO DE BARRAGEM DE REJEITOS — SIMULAÇÃO WOKWI
  *  ESP32 DevKit | TCC UERJ-IPRJ | Thamires Ramos dos Santos
  *
- *  VERSÃO 4 — teste de escalada natural via chuva sintética
- *
- *  CHANGELOG v4 (sobre a v3):
- *  [NOVO] Comando serial "chuva sintetica" / "chuva real" — toggle em
- *    runtime (não é #define, não exige recompilar/reflashear) que fixa os
- *    quatro componentes pluviométricos (precip24h/7d/30d + previsao24h) no
- *    teto de seus respectivos limiares, enquanto V_lencol, V_taxa e
- *    V_pressao continuam vindos do sensor/histórico REAIS. Objetivo: com a
- *    flag ativa, basta variar a umidade real do potenciômetro para
- *    atravessar VERDE -> AMARELO -> VERMELHO pela soma ponderada da
- *    Equação 5 (incluindo o mecanismo de amplificação x1,20 disparando ao
- *    cruzar 17,5% de umidade), sem depender de chuva real nem do protocolo
- *    de ruptura por limiar de 30%. Quando a flag está em false (padrão de
- *    boot), o bloco inteiro é ignorado por um único "if" em
- *    analisarRiscoIntegrado() e o fluxo real permanece bit-a-bit idêntico
- *    ao da v3 — nenhuma outra função foi alterada.
- *  [IMPORTANTE] dadosBrutos.chuva_sintetica_ativa adicionado ao payload,
- *    para que todo registro gerado com a flag ativa fique identificável no
- *    banco e nunca seja confundido com uma leitura real de BNDMET/OWM.
- *
- *  VERSÃO 3 — fidelidade com tcc_versao_19.ino (ESP8266, produção)
- *
- *  CHANGELOG v3 (sobre a v2):
- *  [CRÍTICO] Intervalos de sensor, BNDMET e envio à API voltam a ser
- *    ADAPTATIVOS por nível de alerta (statusSistema), via
- *    obterIntervaloSensor()/obterIntervaloBNDMET()/obterIntervaloEnvioAPI(),
- *    replicando exatamente os valores do tcc_versao_19.ino:
- *      sensor:  30s/10s/5s (VERDE/AMARELO/VERMELHO)
- *      BNDMET:  5min/2min/1min
- *      envio:   60s/20s/10s
- *    Antes, esses três temporizadores eram fixos (15s/10min/20s) independente
- *    do nível de risco — confirmado nos dados de 2026-09-16 (cadência ~20s
- *    constante mesmo em VERMELHO). OWM (/weather+/forecast) permanece fixo
- *    em 10min, igual ao comportamento do v19 (não é adaptativo por design).
- *  [CRÍTICO] dadosLocais.sensorOK deixa de ser fixo em true e passa a ser
- *    calculado pelos limites do ADC (curto-circuito=0 / desconexão=4095),
- *    igual à lógica do tcc_versao_19.ino. Antes, sensor_ok era sempre 1 no
- *    banco, mesmo em leituras nos extremos do potenciômetro, impedindo o
- *    desconto de -40 na confiabilidade e mascarando cenários de falha.
- *
- *  CHANGELOG v2 (sobre a v1 — correções de compilação/boot/NTP):
- *
- *  [CRÍTICO] Corrigido parsing do BNDMET I006/I175: a API retorna pares
- *    [timestamp_ms, valor] por medição, não valores soltos. O código anterior
- *    fazia dataArr[i].as<float>() diretamente sobre o par — o ArduinoJson
- *    converte um JsonArray não-escalar para float como 0, então precipitacao24h/
- *    7d/30d/Atual ficavam sempre 0, mesmo com a API respondendo HTTP 200.
- *  [CRÍTICO] calcularTaxaVariacao() e calcularQuedaPressao() agora calculam de
- *    fato a partir dos buffers bufferUmidade[]/historicoPressao[], em vez de
- *    retornar valores fixos (0,02 / 1,1) — os dois componentes correspondentes
- *    da Equação 5 do TCC (V_taxa_var, V_pressão) voltam a refletir os dados reais.
- *  [CRÍTICO] obterIntensidadePrevisao()/calcularFatorPrevisaoIntensidade():
- *    restauradas as 5 categorias da Tabela 4 do TCC (Fraca/Moderada/Forte/
- *    Muito Forte/Pancada de Chuva — fatores 0,00/0,25/0,50/0,75/1,00), em vez
- *    das 2 categorias que existiam antes.
- *  [CRÍTICO] calcularConfiabilidadeAnalise() e gerarRecomendacaoDetalhada()
- *    implementadas e chamadas a cada análise — analiseRisco.recomendacao e
- *    .confiabilidade deixam de ficar sempre vazios/zerados (o frontend
- *    classifica ruptura via recomendacao.includes('RUPTURA')).
- *  [CRÍTICO] Payload de enviarDadosParaAPI() expandido de 7 para ~30 campos
- *    (timestamp, recomendacao, confiabilidade, os 7 componentes individuais
- *    da equação, dados do BNDMET/OWM completos, dadosBrutos com uptime/
- *    freeHeap/rssi, etc.) — igual ao criarPayloadJSON() do v19.
- *
- *  [IMPORTANTE] Comandos "alerta verde/amarelo/vermelho" agora enviam os
- *    dados simulados à API (3 envios por simulação, via simulacaoEnviosRestantes),
- *    e bloqueiam recálculo/sobrescrita automática enquanto ativos (Opção C do v19).
- *  [IMPORTANTE] historicoPressao[] agora é populado em buscarWeatherAtual()
- *    (antes ficava sempre zerado, mesmo sendo usado por calcularQuedaPressao()).
- *  [IMPORTANTE] Cooldown de 3 leituras seguras após ruptura antes de recalcular
- *    o risco normalmente (contagemRetornoRuptura / aguardandoResetRuptura) —
- *    evita alternância brusca de estado assim que a umidade cruza o limiar.
- *  [IMPORTANTE] Histórico de tendência (historicoUmidade/Precipitacao/Risco[])
- *    via atualizarHistoricoAnalise().
- *  [IMPORTANTE] Watchdog leve de conectividade: verificarConectividade(),
- *    garantirWiFi(), contador de tentativas de reconexão.
- *  [IMPORTANTE] Timestamp real (obterTimestampISO()) incluído no payload.
- *  [IMPORTANTE] Comandos de debug/diagnóstico: debug, calibrar, reset, teste,
- *    enviar, api (além de status, analise, help, alerta *).
- *
  *  Hardware simulado (Wokwi):
  *    Potenciômetro → GPIO34 (simula higrômetro capacitivo, leitura linear 0–4095)
  *    LED Verde → GPIO18 | LED Amarelo → GPIO14 | LED Vermelho → GPIO27 | Buzzer → GPIO26
+ *    ENERGIA (redundância por bateria — SIMULAÇÃO FUNCIONAL da lógica, não da bateria):
+ *      Chave ON/OFF → GPIO32 (condição da rede: ON = disponível) | Potenciômetro → GPIO35 (VARIÁVEL DE SIMULAÇÃO da bateria, 2,5–4,2 V)
+ *      LED REDE → GPIO25 | LED BACKUP → GPIO22 | LED ATENCAO → GPIO23 (lento = bateria baixa | rápido = crítica | fixo = falha/substituir)
  *
  *  Faixas de alerta de risco (Tabela 5 TCC):
  *    0,00 – 0,45 → VERDE   |   0,45 – 0,75 → AMARELO   |   > 0,75 → VERMELHO + Buzzer
  *    ≥ 30% umidade → RUPTURA (fatorRisco = 1,0 imediato)
  *
  *  Comandos Serial:
- *    status | analise | debug | calibrar | reset | teste | enviar | api | help
+ *    status | analise | debug | calibrar | reset | teste | enviar | api | energia | help
  *    alerta verde | alerta amarelo | alerta vermelho (simulação de nível)
  * ========================================================================================================================
  */
@@ -107,6 +30,48 @@
 #include <ArduinoJson.h>
 #include <EEPROM.h>
 #include <time.h>
+
+// ============================================================
+//  TIPOS DE ENERGIA
+//  [CORREÇÃO DE COMPILAÇÃO] Os enums ClasseBateria/EstadoEnergia e a struct
+//  DadosEnergia foram movidos para cá (antes da PRIMEIRA definição de função
+//  do sketch). O pré-processador do Arduino gera automaticamente protótipos
+//  para todas as funções e os insere logo antes da primeira função do arquivo
+//  (obterIntervaloSensor). Como esses tipos estavam declarados mais abaixo,
+//  os protótipos automáticos de textoEstadoEnergia(), textoClasseBateria(),
+//  classificarBateria() e classificarEnergia() referenciavam tipos ainda
+//  desconhecidos, gerando "'ClasseBateria' was not declared in this scope",
+//  "'EstadoEnergia' does not name a type" e, em cascata, os erros
+//  "redeclared as different kind of entity" e "cannot be used as a function".
+// ============================================================
+enum ClasseBateria
+{
+  BAT_NORMAL = 0,
+  BAT_BAIXA = 1,
+  BAT_CRITICA = 2
+};
+
+enum EstadoEnergia
+{
+  ENERGIA_REDE_OK = 0,        // rede disponível, bateria normal
+  ENERGIA_BACKUP_NORMAL = 1,  // rede indisponível, bateria normal: continuidade pelo backup
+  ENERGIA_BACKUP_BAIXA = 2,   // rede indisponível, bateria baixa
+  ENERGIA_BACKUP_CRITICA = 3, // rede indisponível, bateria crítica
+  ENERGIA_REDE_BAT_BAIXA = 4, // rede disponível, bateria baixa/crítica (em recarga)
+  ENERGIA_REDE_BAT_FALHA = 5  // rede disponível e bateria não recupera: SUBSTITUIR
+};
+
+struct DadosEnergia
+{
+  EstadoEnergia estado;
+  ClasseBateria classeBateria;
+  bool redeOk;
+  float tensaoBateriaV;    // tensão SIMULADA (potenciômetro)
+  bool recarregando;       // rede presente, bateria abaixo do limiar, dentro do tempo máximo
+  bool falhaBateria;       // memorizada até a bateria voltar à classe NORMAL
+  unsigned int quedasRede; // quedas da rede desde o boot
+  unsigned long desdeMs;   // millis() do início do estado atual
+};
 
 // ============================================================
 //  CONFIGURAÇÕES
@@ -143,6 +108,11 @@
 #define PIN_LED_AMARELO 14
 #define PIN_LED_VERMELHO 27
 #define PIN_BUZZER 26
+#define PIN_REDE_OK 32      // chave ON/OFF: HIGH = alimentação principal disponível
+#define PIN_BATERIA_ADC 35 // potenciômetro (ADC1_CH7): variável de simulação do estado da bateria
+#define PIN_LED_REDE 25     // LED: alimentação principal disponível
+#define PIN_LED_BACKUP 22   // LED: operando em backup (bateria)
+#define PIN_LED_ATENCAO 23  // LED: bateria baixa (lento) / crítica (rápido) / falha (fixo)
 
 // ============================================================
 //  CALIBRAÇÃO DO SENSOR
@@ -263,6 +233,325 @@ unsigned long obterIntervaloBNDMET()
   default:
     return INTERVALO_BNDMET_VERDE;
   }
+}
+
+// ============================================================
+//  ENERGIA — REDUNDÂNCIA POR BATERIA (SIMULAÇÃO FUNCIONAL DA LÓGICA — Wokwi/ESP32)
+//
+//  Arquitetura física de referência (NodeMCU/ESP8266 — especificada, NÃO montada):
+//    adaptador 5 V -> módulo com gerenciamento de caminho de energia (power-path) + boost
+//    + célula Li-ion protegida -> alimentação da NodeMCU.
+//  A transferência rede<->bateria é feita pelo PRÓPRIO módulo; o firmware NÃO comuta nada:
+//  apenas observa a condição da alimentação e alerta o operador.
+//
+//  O QUE CADA ENTRADA DO WOKWI REPRESENTA (abstrações de simulação):
+//    PIN_REDE_OK (chave ON/OFF)  : condição da alimentação principal. HIGH = disponível.
+//                                  Não é comando para ligar a bateria. O protótipo físico não mede a tensão da rede.
+//    PIN_BATERIA_ADC (potenciômetro): VARIÁVEL DE SIMULAÇÃO do estado energético da bateria
+//                                  (não é uma bateria, nem um sensor de bateria real).
+//                                  Mapeamento linear 0..4095 -> 2,5 V..4,2 V (corte de descarga e carga plena
+//                                  da célula NCR18650B, datasheet Panasonic).
+//  Limiares:
+//    BAIXA   < 3,25 V : equivale à saída de bateria baixa (LBO) do módulo de referência — valor CALCULADO
+//                       a partir do esquemático do módulo e do limiar de 500 mV do TPS61090.
+//    CRÍTICA < 3,00 V : LIMIAR DEFINIDO PARA FINS DE SIMULAÇÃO (referência: "3,0 V = quase descarregada",
+//                       Adafruit). O protótipo físico NÃO possui medição analógica da bateria (A0 ocupado
+//                       pelo higrômetro); esse nível só existiria com um conversor A/D adicional.
+//    Histerese 0,065 V: 10 mV (histerese do comparador LBI) x (1 + 1,87 M / 340 k) = 65 mV.
+//
+//  O Wokwi NÃO simula bateria, carga, descarga, autonomia, vida útil nem a comutação elétrica real.
+//  O buzzer permanece EXCLUSIVO dos alertas de risco da barragem (energia: LEDs, serial e recomendação).
+//  Modelo de risco, pesos, x1,20, ruptura, confiabilidade e intervalos adaptativos NÃO são alterados.
+// ============================================================
+
+const float BAT_V_MIN_SIM = 2.5f;           // 0 do potenciômetro
+const float BAT_V_MAX_SIM = 4.2f;           // fundo de escala do potenciômetro
+const float LIMIAR_BAT_BAIXA_V = 3.25f;     // calculado (esquemático do módulo + TPS61090)
+const float LIMIAR_BAT_CRITICA_V = 3.00f;   // limiar de SIMULAÇÃO
+const float HISTERESE_BAT_V = 0.065f;       // calculada (comparador LBI)
+const unsigned long AMOSTRA_BAT_MS = 200UL; // período de leitura do potenciômetro (média de 8 amostras)
+const unsigned long FILTRO_ENERGIA_MS = 500UL; // persistência mínima para confirmar uma mudança (software)
+
+// Tempo máximo com bateria abaixo do limiar e rede presente antes de classificar FALHA (SUBSTITUIR).
+//   *** PARÂMETRO DE PROJETO (hipótese, NÃO é dado de fabricante) — calibrar em bancada. ***
+//   Projeto: 8 h (~ 2 x o tempo ideal de recarga de 4,3 h) | Wokwi: 30 s (somente demonstração)
+#define ENERGIA_DEMO_ACELERADA 1
+#if ENERGIA_DEMO_ACELERADA
+const unsigned long T_FALHA_BATERIA_MS = 30000UL;
+#else
+const unsigned long T_FALHA_BATERIA_MS = 28800000UL;
+#endif
+
+const unsigned long PISCA_BAIXA_MS = 1000UL;   // LED ATENCAO: bateria baixa
+const unsigned long PISCA_CRITICA_MS = 250UL;  // LED ATENCAO: bateria crítica
+
+// enum ClasseBateria, enum EstadoEnergia e struct DadosEnergia: definidos na
+// seção "TIPOS DE ENERGIA", no início do arquivo (ver correção de compilação).
+
+DadosEnergia energia = {ENERGIA_REDE_OK, BAT_NORMAL, true, 4.2f, false, false, 0, 0};
+bool energiaEventoPendente = false;      // true após mudança de estado ou de classe -> envio imediato
+bool redeBruta = true;
+unsigned long redeBrutaDesdeMs = 0;
+ClasseBateria classeCandidata = BAT_NORMAL;
+unsigned long classeCandidataDesdeMs = 0;
+unsigned long ultimaAmostraBatMs = 0;
+bool contandoRecarga = false;
+unsigned long inicioRecargaMs = 0;
+
+const char *textoEstadoEnergia(EstadoEnergia e)
+{
+  switch (e)
+  {
+  case ENERGIA_REDE_OK:
+    return "REDE_OK";
+  case ENERGIA_BACKUP_NORMAL:
+    return "BACKUP_NORMAL";
+  case ENERGIA_BACKUP_BAIXA:
+    return "BACKUP_BAT_BAIXA";
+  case ENERGIA_BACKUP_CRITICA:
+    return "BACKUP_BAT_CRITICA";
+  case ENERGIA_REDE_BAT_BAIXA:
+    return "REDE_BAT_BAIXA";
+  case ENERGIA_REDE_BAT_FALHA:
+    return "REDE_BAT_FALHA";
+  }
+  return "DESCONHECIDO";
+}
+
+const char *textoClasseBateria(ClasseBateria c)
+{
+  return c == BAT_NORMAL ? "NORMAL" : (c == BAT_BAIXA ? "BAIXA" : "CRITICA");
+}
+
+// Converte a leitura do potenciômetro (0..4095) na tensão SIMULADA da bateria.
+float tensaoBateriaSimulada(int adc)
+{
+  return BAT_V_MIN_SIM + (BAT_V_MAX_SIM - BAT_V_MIN_SIM) * ((float)adc / 4095.0f);
+}
+
+// Classe da bateria com histerese (evita oscilação perto dos limiares).
+ClasseBateria classificarBateria(float v, ClasseBateria atual)
+{
+  switch (atual)
+  {
+  case BAT_NORMAL:
+    if (v < LIMIAR_BAT_CRITICA_V)
+      return BAT_CRITICA;
+    if (v < LIMIAR_BAT_BAIXA_V)
+      return BAT_BAIXA;
+    return BAT_NORMAL;
+  case BAT_BAIXA:
+    if (v < LIMIAR_BAT_CRITICA_V)
+      return BAT_CRITICA;
+    if (v >= LIMIAR_BAT_BAIXA_V + HISTERESE_BAT_V)
+      return BAT_NORMAL;
+    return BAT_BAIXA;
+  default: // BAT_CRITICA
+    if (v >= LIMIAR_BAT_BAIXA_V + HISTERESE_BAT_V)
+      return BAT_NORMAL;
+    if (v >= LIMIAR_BAT_CRITICA_V + HISTERESE_BAT_V)
+      return BAT_BAIXA;
+    return BAT_CRITICA;
+  }
+}
+
+EstadoEnergia classificarEnergia(bool redeOk, ClasseBateria c, bool falha)
+{
+  if (redeOk)
+  {
+    if (c == BAT_NORMAL)
+      return ENERGIA_REDE_OK;
+    return falha ? ENERGIA_REDE_BAT_FALHA : ENERGIA_REDE_BAT_BAIXA;
+  }
+  if (c == BAT_NORMAL)
+    return ENERGIA_BACKUP_NORMAL;
+  return c == BAT_BAIXA ? ENERGIA_BACKUP_BAIXA : ENERGIA_BACKUP_CRITICA;
+}
+
+float lerTensaoBateriaSimulada()
+{
+  long soma = 0;
+  for (int i = 0; i < 8; i++)
+    soma += analogRead(PIN_BATERIA_ADC);
+  return tensaoBateriaSimulada((int)(soma / 8));
+}
+
+void inicializarEnergia()
+{
+  unsigned long agora = millis();
+  bool rede = (digitalRead(PIN_REDE_OK) == HIGH);
+  float v = lerTensaoBateriaSimulada();
+  ClasseBateria c = classificarBateria(v, BAT_NORMAL);
+
+  redeBruta = rede;
+  redeBrutaDesdeMs = agora;
+  classeCandidata = c;
+  classeCandidataDesdeMs = agora;
+  ultimaAmostraBatMs = agora;
+
+  energia.redeOk = rede;
+  energia.classeBateria = c;
+  energia.tensaoBateriaV = v;
+  energia.falhaBateria = false;
+  energia.recarregando = (rede && c != BAT_NORMAL);
+  energia.quedasRede = 0;
+  energia.estado = classificarEnergia(rede, c, false);
+  energia.desdeMs = agora;
+
+  contandoRecarga = (rede && c != BAT_NORMAL);
+  inicioRecargaMs = agora;
+  energiaEventoPendente = false;
+
+  Serial.printf("[ENERGIA] Estado inicial: %s | rede=%s | bateria %s (%.2f V simulados)\r\n",
+                textoEstadoEnergia(energia.estado), rede ? "DISPONIVEL" : "INDISPONIVEL", textoClasseBateria(c), v);
+}
+
+void atualizarEnergia()
+{
+  unsigned long agora = millis();
+
+  // 1) Rede (chave): confirma a mudança só depois de FILTRO_ENERGIA_MS estável.
+  bool leituraRede = (digitalRead(PIN_REDE_OK) == HIGH);
+  if (leituraRede != redeBruta)
+  {
+    redeBruta = leituraRede;
+    redeBrutaDesdeMs = agora;
+  }
+  bool redeOk = energia.redeOk;
+  if (redeBruta != energia.redeOk && (agora - redeBrutaDesdeMs) >= FILTRO_ENERGIA_MS)
+  {
+    redeOk = redeBruta;
+    if (!redeOk)
+      energia.quedasRede++;
+  }
+
+  // 2) Bateria (potenciômetro): amostra periódica, histerese e persistência mínima.
+  ClasseBateria classeAnterior = energia.classeBateria;
+  if (agora - ultimaAmostraBatMs >= AMOSTRA_BAT_MS)
+  {
+    ultimaAmostraBatMs = agora;
+    energia.tensaoBateriaV = lerTensaoBateriaSimulada();
+    ClasseBateria cand = classificarBateria(energia.tensaoBateriaV, energia.classeBateria);
+    if (cand != classeCandidata)
+    {
+      classeCandidata = cand;
+      classeCandidataDesdeMs = agora;
+    }
+  }
+  if (classeCandidata != energia.classeBateria && (agora - classeCandidataDesdeMs) >= FILTRO_ENERGIA_MS)
+    energia.classeBateria = classeCandidata;
+
+  // 3) Falha: rede presente e bateria abaixo do limiar além do tempo máximo (parâmetro de projeto).
+  if (redeOk && energia.classeBateria != BAT_NORMAL)
+  {
+    if (!contandoRecarga)
+    {
+      contandoRecarga = true;
+      inicioRecargaMs = agora;
+    }
+    if (!energia.falhaBateria && (agora - inicioRecargaMs) >= T_FALHA_BATERIA_MS)
+      energia.falhaBateria = true;
+  }
+  else
+  {
+    contandoRecarga = false;
+    if (energia.classeBateria == BAT_NORMAL)
+      energia.falhaBateria = false; // recuperada ou substituída
+  }
+
+  bool redeAnterior = energia.redeOk;
+  energia.redeOk = redeOk;
+  energia.recarregando = (redeOk && energia.classeBateria != BAT_NORMAL && !energia.falhaBateria);
+
+  // 4) Mensagens e eventos nas mudanças.
+  if (energia.classeBateria != classeAnterior)
+  {
+    energiaEventoPendente = true;
+    Serial.printf("[ENERGIA] Bateria (simulada): %s -> %s (%.2f V)\r\n", textoClasseBateria(classeAnterior),
+                  textoClasseBateria(energia.classeBateria), energia.tensaoBateriaV);
+  }
+  if (redeAnterior != redeOk)
+    energiaEventoPendente = true;
+
+  EstadoEnergia novo = classificarEnergia(redeOk, energia.classeBateria, energia.falhaBateria);
+  if (novo != energia.estado)
+  {
+    EstadoEnergia antigo = energia.estado;
+    energia.estado = novo;
+    energia.desdeMs = agora;
+    energiaEventoPendente = true;
+
+    Serial.printf("[ENERGIA] %s -> %s\r\n", textoEstadoEnergia(antigo), textoEstadoEnergia(novo));
+    switch (novo)
+    {
+    case ENERGIA_BACKUP_NORMAL:
+      Serial.print("[ENERGIA] REDE INDISPONIVEL - continuidade pelo BACKUP (medicao, calculo e alertas continuam)\r\n");
+      break;
+    case ENERGIA_BACKUP_BAIXA:
+      Serial.print("[ENERGIA] ALERTA: bateria BAIXA em backup - restabelecer a rede\r\n");
+      break;
+    case ENERGIA_BACKUP_CRITICA:
+      Serial.print("[ENERGIA] ALERTA CRITICO: bateria CRITICA em backup - intervencao necessaria\r\n");
+      break;
+    case ENERGIA_REDE_BAT_BAIXA:
+      Serial.print("[ENERGIA] Rede disponivel, mas bateria abaixo do limiar (em recarga) - alerta mantido\r\n");
+      break;
+    case ENERGIA_REDE_BAT_FALHA:
+      Serial.print("[ENERGIA] FALHA DE BATERIA: rede presente e bateria nao recupera alem do tempo maximo - SUBSTITUIR\r\n");
+      break;
+    case ENERGIA_REDE_OK:
+      Serial.print(antigo == ENERGIA_REDE_BAT_FALHA ? "[ENERGIA] Bateria recuperada ou substituida - alimentacao normal\r\n"
+                                                    : "[ENERGIA] REDE DISPONIVEL - alimentacao principal normal\r\n");
+      break;
+    }
+  }
+}
+
+// LEDs de energia, sem bloqueio. ATENCAO: pisca lento = bateria baixa | rapido = crítica | fixo = falha.
+void controlarLedsEnergia()
+{
+  static unsigned long ultimoToggle = 0;
+  static bool nivelAtencao = false;
+
+  digitalWrite(PIN_LED_REDE, energia.redeOk ? HIGH : LOW);
+  digitalWrite(PIN_LED_BACKUP, energia.redeOk ? LOW : HIGH);
+
+  if (energia.falhaBateria)
+  {
+    nivelAtencao = true;
+    digitalWrite(PIN_LED_ATENCAO, HIGH);
+    return;
+  }
+  if (energia.classeBateria == BAT_NORMAL)
+  {
+    nivelAtencao = false;
+    digitalWrite(PIN_LED_ATENCAO, LOW);
+    return;
+  }
+  unsigned long meio = (energia.classeBateria == BAT_CRITICA) ? PISCA_CRITICA_MS : PISCA_BAIXA_MS;
+  unsigned long agora = millis();
+  if (agora - ultimoToggle >= meio)
+  {
+    nivelAtencao = !nivelAtencao;
+    digitalWrite(PIN_LED_ATENCAO, nivelAtencao ? HIGH : LOW);
+    ultimoToggle = agora;
+  }
+}
+
+void mostrarStatusEnergia()
+{
+  Serial.print("\r\n===== ENERGIA (simulacao funcional) =====\r\n");
+  Serial.printf("Estado           : %s (ha %lu s)\r\n", textoEstadoEnergia(energia.estado), (millis() - energia.desdeMs) / 1000UL);
+  Serial.printf("Fonte principal  : %s (chave)\r\n", energia.redeOk ? "DISPONIVEL" : "INDISPONIVEL");
+  Serial.printf("Operando por     : %s\r\n", energia.redeOk ? "REDE" : "BACKUP");
+  Serial.printf("Bateria simulada : %.2f V -> %s (potenciometro; limiares %.2f V baixa / %.2f V critica)\r\n",
+                energia.tensaoBateriaV, textoClasseBateria(energia.classeBateria), LIMIAR_BAT_BAIXA_V, LIMIAR_BAT_CRITICA_V);
+  Serial.printf("Recarregando     : %s\r\n", energia.recarregando ? "SIM" : "NAO");
+  Serial.printf("Falha bateria    : %s\r\n", energia.falhaBateria ? "SIM - SUBSTITUIR" : "NAO");
+  Serial.printf("Quedas de rede (desde o boot): %u\r\n", energia.quedasRede);
+  Serial.printf("Tempo max. com bateria abaixo do limiar p/ falha: %lu s %s\r\n", T_FALHA_BATERIA_MS / 1000UL,
+                ENERGIA_DEMO_ACELERADA ? "(DEMONSTRACAO Wokwi - valor de projeto: 8 h)" : "(valor de projeto)");
+  Serial.print("=========================================\r\n");
 }
 
 // ============================================================
@@ -717,6 +1006,26 @@ void gerarRecomendacaoDetalhada()
     r += " | Dados BNDMET indisponiveis";
   if (analiseRisco.amplificado)
     r += " | Amplificacao de risco ativa";
+  switch (energia.estado)
+  {
+  case ENERGIA_BACKUP_NORMAL:
+    r += " | ENERGIA: rede indisponivel, operando em backup";
+    break;
+  case ENERGIA_BACKUP_BAIXA:
+    r += " | ENERGIA: BATERIA BAIXA em backup";
+    break;
+  case ENERGIA_BACKUP_CRITICA:
+    r += " | ENERGIA: BATERIA CRITICA em backup - intervencao necessaria";
+    break;
+  case ENERGIA_REDE_BAT_BAIXA:
+    r += " | ENERGIA: bateria abaixo do limiar (em recarga)";
+    break;
+  case ENERGIA_REDE_BAT_FALHA:
+    r += " | ENERGIA: FALHA DE BATERIA - substituir";
+    break;
+  default:
+    break;
+  }
   analiseRisco.recomendacao = r;
 }
 
@@ -1377,6 +1686,19 @@ String criarPayloadJSON()
   dadosBrutos["bndmet_inicializado"] = bndmetInicializado;
   dadosBrutos["aguardando_reset_ruptura"] = aguardandoResetRuptura;
 
+  // Energia dentro de dadosBrutos (jsonb): não altera o esquema do backend. bateria_simulada=true sinaliza
+  // que a tensão vem do potenciômetro do Wokwi (mesmo princípio de chuva_sintetica_ativa).
+  JsonObject energiaJson = dadosBrutos["energia"].to<JsonObject>();
+  energiaJson["estado"] = textoEstadoEnergia(energia.estado);
+  energiaJson["rede_ok"] = energia.redeOk;
+  energiaJson["bateria_classe"] = textoClasseBateria(energia.classeBateria);
+  energiaJson["bateria_v_simulada"] = energia.tensaoBateriaV;
+  energiaJson["bateria_simulada"] = true;
+  energiaJson["recarregando"] = energia.recarregando;
+  energiaJson["falha_bateria"] = energia.falhaBateria;
+  energiaJson["quedas_rede"] = energia.quedasRede;
+  energiaJson["tempo_no_estado_s"] = (millis() - energia.desdeMs) / 1000UL;
+
   JsonObject confiabDetalhes = dadosBrutos["confiabilidade_detalhes"].to<JsonObject>();
   confiabDetalhes["base"] = 100;
   confiabDetalhes["resultado"] = detalhesConfiab.resultado;
@@ -1454,6 +1776,7 @@ void mostrarStatusConectividade()
   bufferTexto += "WiFi: " + String(wifiConectado ? "OK" : "ERR") + " | BNDMET: " + dadosBNDMET.statusAPI + " | Precip24h: " + String(dadosBNDMET.precipitacao24h, 1) + "mm | Precip7d: " + String(dadosBNDMET.precipitacao7d, 1) + "mm\r\n";
   bufferTexto += "OWM - Temp: " + String(dadosMeteo.temperatura, 1) + "C | Umidade: " + String(dadosMeteo.umidadeExterna, 0) + "% | Pressao: " + String(dadosMeteo.pressaoAtmosferica, 1) + " | Chuva prevista 24h: " + String(previsao.chuvaFutura24h, 1) + "mm\r\n";
   bufferTexto += "Recomendacao: " + analiseRisco.recomendacao + " | Confiabilidade: " + String(analiseRisco.confiabilidade) + "%\r\n";
+  bufferTexto += "Energia: " + String(textoEstadoEnergia(energia.estado)) + " | Rede: " + String(energia.redeOk ? "DISPONIVEL" : "INDISPONIVEL") + " | Bateria (sim.): " + String(textoClasseBateria(energia.classeBateria)) + " " + String(energia.tensaoBateriaV, 2) + " V\r\n";
   Serial.print(bufferTexto);
 }
 
@@ -1663,6 +1986,7 @@ void mostrarComandosDisponiveis()
   bufferTexto += "  enviar   - Forcar envio para API\r\n";
   bufferTexto += "  api      - Testar conexao com API\r\n";
   bufferTexto += "  help     - Este menu\r\n";
+  bufferTexto += "  energia  - Estado da alimentacao (rede / bateria)\r\n";
   bufferTexto += "--- Simulacao de nivel (demonstracao) ---\r\n";
   bufferTexto += "  alerta verde    - Forca nivel VERDE\r\n";
   bufferTexto += "  alerta amarelo  - Forca nivel AMARELO\r\n";
@@ -1694,13 +2018,20 @@ void setup()
   pinMode(PIN_LED_VERMELHO, OUTPUT);
   pinMode(PIN_BUZZER, OUTPUT);
   pinMode(PIN_HIGROMETRO, INPUT);
+  pinMode(PIN_REDE_OK, INPUT);
+  pinMode(PIN_BATERIA_ADC, INPUT);
+  pinMode(PIN_LED_REDE, OUTPUT);
+  pinMode(PIN_LED_BACKUP, OUTPUT);
+  pinMode(PIN_LED_ATENCAO, OUTPUT);
 
-  for (int p : {(int)PIN_LED_VERDE, (int)PIN_LED_AMARELO, (int)PIN_LED_VERMELHO})
+  for (int p : {(int)PIN_LED_VERDE, (int)PIN_LED_AMARELO, (int)PIN_LED_VERMELHO, (int)PIN_LED_REDE, (int)PIN_LED_BACKUP, (int)PIN_LED_ATENCAO})
   {
     digitalWrite(p, HIGH);
     delay(300);
     digitalWrite(p, LOW);
   }
+
+  inicializarEnergia(); // lê rede/bateria (sem gerar evento espúrio no boot)
 
   conectarSistemas();
 
@@ -1798,6 +2129,10 @@ void loop()
 {
   unsigned long agora = millis();
   static uint8_t contagemRetornoRuptura = 0;
+
+  // Energia: lê rede/bateria e atualiza o LED a cada iteração (não bloqueante)
+  atualizarEnergia();
+  controlarLedsEnergia();
 
   // Leitura do sensor
   if (agora - ultimaLeituraSensor >= obterIntervaloSensor())
@@ -1936,6 +2271,18 @@ void loop()
     ultimoEnvioAPI = agora;
   }
 
+  // Evento de energia (queda/retorno da rede, bateria baixa, falha): envio imediato, sem esperar o intervalo
+  if (energiaEventoPendente)
+  {
+    energiaEventoPendente = false;
+    gerarRecomendacaoDetalhada(); // atualiza a recomendação com o estado de energia antes do envio
+    if (wifiConectado)
+    {
+      enviarDadosParaAPI();
+      ultimoEnvioAPI = millis();
+    }
+  }
+
   ativarAlarmeBuzzer();
 
   // Comandos via Serial
@@ -1957,6 +2304,8 @@ void loop()
       resetarSistema();
     else if (cmd == "help")
       mostrarComandosDisponiveis();
+    else if (cmd == "energia")
+      mostrarStatusEnergia();
     else if (cmd == "teste")
       executarTesteCompleto();
     else if (cmd == "enviar")
@@ -2018,7 +2367,6 @@ void loop()
     // Comandos de simulação de nível — [IMPORTANTE] agora enviam à API
     else if (cmd == "alerta verde")
     {
-      modoManual = true;
       simulacaoAtiva = true;
       simulacaoEnviosRestantes = 3;
       statusSistema = 0;
@@ -2030,7 +2378,12 @@ void loop()
       analiseRisco.indiceRisco = 30;
       analiseRisco.amplificado = false;
       analiseRisco.recomendacao = "[Simulacao] NORMAL - Nivel VERDE forcado via comando serial";
+      // [CORREÇÃO] modoManual só é ativado DEPOIS de aplicar LEDs/buzzer: antes ele era
+      // ligado primeiro, e controlarSistemaFisico() retornava logo no início
+      // ("Modo manual - hardware nao alterado"), então só a API recebia o nível.
+      modoManual = false; // libera também quando outro "alerta" já estava ativo
       controlarSistemaFisico();
+      modoManual = true; // a partir daqui, bloqueia sobrescrita automática do hardware
       String bufferTexto = "";
       bufferTexto += "Nivel VERDE (Risco: 30%) [Simulacao]\r\n";
       Serial.print(bufferTexto);
@@ -2043,7 +2396,6 @@ void loop()
     }
     else if (cmd == "alerta amarelo")
     {
-      modoManual = true;
       simulacaoAtiva = true;
       simulacaoEnviosRestantes = 3;
       statusSistema = 1;
@@ -2055,7 +2407,12 @@ void loop()
       analiseRisco.indiceRisco = 60;
       analiseRisco.amplificado = false;
       analiseRisco.recomendacao = "[Simulacao] ATENCAO - Nivel AMARELO forcado via comando serial";
+      // [CORREÇÃO] modoManual só é ativado DEPOIS de aplicar LEDs/buzzer: antes ele era
+      // ligado primeiro, e controlarSistemaFisico() retornava logo no início
+      // ("Modo manual - hardware nao alterado"), então só a API recebia o nível.
+      modoManual = false; // libera também quando outro "alerta" já estava ativo
       controlarSistemaFisico();
+      modoManual = true; // a partir daqui, bloqueia sobrescrita automática do hardware
       String bufferTexto = "";
       bufferTexto += "Nivel AMARELO (Risco: 60%) [Simulacao]\r\n";
       Serial.print(bufferTexto);
@@ -2071,7 +2428,6 @@ void loop()
     }
     else if (cmd == "alerta vermelho")
     {
-      modoManual = true;
       simulacaoAtiva = true;
       simulacaoEnviosRestantes = 3;
       statusSistema = 2;
@@ -2084,7 +2440,12 @@ void loop()
       analiseRisco.amplificado = false;
       buzzerAtivo = true;
       analiseRisco.recomendacao = "[Simulacao] CRITICO - Nivel VERMELHO forcado via comando serial";
+      // [CORREÇÃO] modoManual só é ativado DEPOIS de aplicar LEDs/buzzer: antes ele era
+      // ligado primeiro, e controlarSistemaFisico() retornava logo no início
+      // ("Modo manual - hardware nao alterado"), então só a API recebia o nível.
+      modoManual = false; // libera também quando outro "alerta" já estava ativo
       controlarSistemaFisico();
+      modoManual = true; // a partir daqui, bloqueia sobrescrita automática do hardware
       String bufferTexto = "";
       bufferTexto += "Nivel VERMELHO (Risco: 85%) [Simulacao]\r\n";
       Serial.print(bufferTexto);
