@@ -1,5 +1,10 @@
 [wokwi]
 version = 1
-firmware = 'build/sketch.ino.merged.bin'
-elf = 'build/sketch.ino.elf'
+# v3 (modelo novo). Compilar com:
+#   arduino-cli compile --fqbn esp32:esp32:esp32 sketch_v3 --output-dir build
+firmware = 'build/sketch_v3.ino.merged.bin'
+elf = 'build/sketch_v3.ino.elf'
+# Versão antiga (descomente as duas linhas abaixo e comente as de cima):
+# firmware = 'build/sketch.ino.merged.bin'
+# elf = 'build/sketch.ino.elf'
 rfc2217ServerPort = 4000

@@ -33,16 +33,6 @@
 
 // ============================================================
 //  TIPOS DE ENERGIA
-//  [CORREÇÃO DE COMPILAÇÃO] Os enums ClasseBateria/EstadoEnergia e a struct
-//  DadosEnergia foram movidos para cá (antes da PRIMEIRA definição de função
-//  do sketch). O pré-processador do Arduino gera automaticamente protótipos
-//  para todas as funções e os insere logo antes da primeira função do arquivo
-//  (obterIntervaloSensor). Como esses tipos estavam declarados mais abaixo,
-//  os protótipos automáticos de textoEstadoEnergia(), textoClasseBateria(),
-//  classificarBateria() e classificarEnergia() referenciavam tipos ainda
-//  desconhecidos, gerando "'ClasseBateria' was not declared in this scope",
-//  "'EstadoEnergia' does not name a type" e, em cascata, os erros
-//  "redeclared as different kind of entity" e "cannot be used as a function".
 // ============================================================
 enum ClasseBateria
 {
@@ -89,14 +79,13 @@ struct DadosEnergia
 
 // BNDMET — api-bndmet.decea.mil.br (HTTPS)
 #define BNDMET_HOST "api-bndmet.decea.mil.br"
-#define BNDMET_API_KEY "F9prvVKpaQ1qNtQywCN2sily029xgNaq"
+#include "secrets.h" // BNDMET_API_KEY e OWM_API_KEY (fora do Git)
 #define BNDMET_ESTACAO "D6594"
 #define BNDMET_COD_I006 "I006"
 #define BNDMET_COD_I175 "I175"
 
 // OpenWeatherMap — pro.openweathermap.org (HTTPS obrigatório)
 #define OWM_HOST "pro.openweathermap.org"
-#define OWM_API_KEY "04b8a531e11670b8099c49e16ba8f676"
 #define OWM_LAT "-20.1433"
 #define OWM_LON "-44.1997"
 
@@ -274,19 +263,16 @@ const unsigned long FILTRO_ENERGIA_MS = 500UL; // persistência mínima para con
 
 // Tempo máximo com bateria abaixo do limiar e rede presente antes de classificar FALHA (SUBSTITUIR).
 //   *** PARÂMETRO DE PROJETO (hipótese, NÃO é dado de fabricante) — calibrar em bancada. ***
-//   Projeto: 8 h (~ 2 x o tempo ideal de recarga de 4,3 h) | Wokwi: 30 s (somente demonstração)
+//   Projeto: 10 h (~ 2 x o tempo ideal de recarga de ~5,1 h) | Wokwi: 30 s (somente demonstração)
 #define ENERGIA_DEMO_ACELERADA 1
 #if ENERGIA_DEMO_ACELERADA
 const unsigned long T_FALHA_BATERIA_MS = 30000UL;
 #else
-const unsigned long T_FALHA_BATERIA_MS = 28800000UL;
+const unsigned long T_FALHA_BATERIA_MS = 36000000UL;
 #endif
 
 const unsigned long PISCA_BAIXA_MS = 1000UL;   // LED ATENCAO: bateria baixa
 const unsigned long PISCA_CRITICA_MS = 250UL;  // LED ATENCAO: bateria crítica
-
-// enum ClasseBateria, enum EstadoEnergia e struct DadosEnergia: definidos na
-// seção "TIPOS DE ENERGIA", no início do arquivo (ver correção de compilação).
 
 DadosEnergia energia = {ENERGIA_REDE_OK, BAT_NORMAL, true, 4.2f, false, false, 0, 0};
 bool energiaEventoPendente = false;      // true após mudança de estado ou de classe -> envio imediato
@@ -550,7 +536,7 @@ void mostrarStatusEnergia()
   Serial.printf("Falha bateria    : %s\r\n", energia.falhaBateria ? "SIM - SUBSTITUIR" : "NAO");
   Serial.printf("Quedas de rede (desde o boot): %u\r\n", energia.quedasRede);
   Serial.printf("Tempo max. com bateria abaixo do limiar p/ falha: %lu s %s\r\n", T_FALHA_BATERIA_MS / 1000UL,
-                ENERGIA_DEMO_ACELERADA ? "(DEMONSTRACAO Wokwi - valor de projeto: 8 h)" : "(valor de projeto)");
+                ENERGIA_DEMO_ACELERADA ? "(DEMONSTRACAO Wokwi - valor de projeto: 10 h)" : "(valor de projeto)");
   Serial.print("=========================================\r\n");
 }
 
@@ -1071,7 +1057,7 @@ void acionarRuptura()
   digitalWrite(PIN_LED_VERDE, LOW);
   digitalWrite(PIN_LED_AMARELO, LOW);
   digitalWrite(PIN_LED_VERMELHO, HIGH);
-  tone(PIN_BUZZER, 2400);
+  digitalWrite(PIN_BUZZER, HIGH);
 }
 
 // ============================================================
@@ -1116,6 +1102,8 @@ void controlarSistemaFisico()
   Serial.print(bufferTexto);
 }
 
+// Buzzer ATIVO (TMB-12A03, oscilador interno): HIGH = som, LOW = silêncio. Sem geração de frequência (PWM).
+// A severidade é expressa pelo intervalo de pulsação (300/500/800/1000 ms), não por frequência.
 void ativarAlarmeBuzzer()
 {
   static unsigned long ultimoBeep = 0;
@@ -1123,7 +1111,7 @@ void ativarAlarmeBuzzer()
 
   if (!buzzerAtivo)
   {
-    noTone(PIN_BUZZER);
+    digitalWrite(PIN_BUZZER, LOW);
     estadoBuzzer = false;
     return;
   }
@@ -1141,18 +1129,6 @@ void ativarAlarmeBuzzer()
     estadoBuzzer = !estadoBuzzer;
     digitalWrite(PIN_BUZZER, estadoBuzzer);
     ultimoBeep = millis();
-    if (estadoBuzzer)
-    {
-      unsigned int freq = 2000;
-      if (analiseRisco.indiceRisco >= 90)
-        freq = 2400;
-      else if (analiseRisco.indiceRisco >= 85)
-        freq = 2200;
-      else if (analiseRisco.indiceRisco >= 80)
-        freq = 2000;
-      tone(PIN_BUZZER, freq, intervalo / 2);
-      ultimoBeep = millis();
-    }
   }
 }
 
@@ -2259,7 +2235,7 @@ void loop()
           simulacaoAtiva = false;
           modoManual = false;
           buzzerAtivo = false;
-          noTone(PIN_BUZZER);
+          digitalWrite(PIN_BUZZER, LOW);
 
           bufferTexto = "";
           bufferTexto += "Simulacao encerrada - retornando ao modo automatico\r\n";

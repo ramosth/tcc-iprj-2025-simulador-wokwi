@@ -170,7 +170,7 @@
       "top": 222,
       "left": 8,
       "attrs": {
-        "text": "ESP32\nDevKit C V4"
+        "text": "ESP32\n(DevKit C V4)"
       }
     },
     {
@@ -233,7 +233,7 @@
       "top": 80,
       "left": 405,
       "attrs": {
-        "text": "Chave — Falha da rede elétrica"
+        "text": "FALHA DA REDE ELÉTRICA\n(Chave)"
       }
     },
     {
@@ -242,7 +242,7 @@
       "top": 155,
       "left": 405,
       "attrs": {
-        "text": "Potenciômetro — Estado da bateria"
+        "text": "ESTADO DA BATERIA\n(Potenciômetro)"
       }
     },
     {
@@ -385,12 +385,12 @@
     ],
     [
       "esp:26",
-      "buzzer:1",
+      "buzzer:2",
       "purple",
       []
     ],
     [
-      "buzzer:2",
+      "buzzer:1",
       "esp:GND.1",
       "black",
       [
