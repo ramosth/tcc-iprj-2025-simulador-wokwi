@@ -49,7 +49,7 @@
 //  Com 120: 60 min -> 30 s; 10 min -> 5 s; 19,5 h -> 9 min 45 s.
 //  É recurso de TESTE da simulação; o texto do TCC deve dizer isso.
 // =====================================================================================
-const uint32_t FATOR_DEMO = 120; // Fonte: plano v3, Parte 2.6 (modo demonstração; não é parâmetro do modelo)
+const uint32_t FATOR_DEMO = 120; // Fonte: decisão de projeto (modo de teste; não é parâmetro do modelo)
 
 // =====================================================================================
 //  PINOS (diagram.json)
@@ -94,18 +94,18 @@ const uint32_t INTERVALO_NORMAL_MS = 60UL * 60UL * 1000UL / FATOR_DEMO; // Fonte
 const uint32_t INTERVALO_EVENTO_MS = 10UL * 60UL * 1000UL / FATOR_DEMO; // Fonte: freitas2021analise (10 min com chuva)
 
 // =====================================================================================
-//  ENERGIA (simulação — Parte 3 do plano; valores do P4)
+//  ENERGIA (simulação; valores do Cap. 3 do TCC, Seção de alimentação redundante)
 // =====================================================================================
 const int VBAT_MIN_MV = 2500;     // Fonte: panasonic_ncr18650b (tensão de corte de descarga, 2,50 V)
 const int VBAT_MAX_MV = 4200;     // Fonte: panasonic_ncr18650b (tensão de fim de carga CC-CV, 4,20 V)
 const int VBAT_BAIXA_MV = 3300;   // Fonte: panasonic_ncr18650b (curva de descarga 0,2 C: joelho em ~3,3 V)
 const int VBAT_CRITICA_MV = 3000; // Fonte: panasonic_ncr18650b (curva de descarga 0,2 C: ~96 % da capacidade)
-// T_carga = t_pad x n x I_pad / I_carr = 4,0 h x 3 x 1625 mA / 1000 mA = 19,5 h (Eq. tempo-carga do P4)
+// T_carga = t_pad x n x I_pad / I_carr = 4,0 h x 3 x 1625 mA / 1000 mA = 19,5 h (Eq. tempo-carga do TCC)
 const uint32_t T_CARGA_MS = 70200UL * 1000UL / FATOR_DEMO; // Fonte: panasonic_ncr18650b + adafruit_powerboost1000c (19,5 h = 70.200 s)
 
 // =====================================================================================
 //  PARÂMETROS DE SOFTWARE (não são parâmetros do modelo; ficam só no código —
-//  plano v3, Parte 1.2: "detalhe de software; sai do texto")
+//  são detalhes de software e não aparecem no texto do TCC)
 // =====================================================================================
 const uint32_t BAUD = 115200;           // Fonte: espressif_esp32 (taxa padrão da UART0); software
 const uint32_t TIMEOUT_HTTP_MS = 15000; // Fonte: software (tempo máximo de espera por resposta HTTP)
@@ -116,7 +116,7 @@ const long DIA_S = 86400L;              // Fonte: software (segundos em um dia)
 
 const char *BNDMET_URL = "https://api-bndmet.decea.mil.br/v1/estacoes/D6594/fenomenos/I006"; // Fonte: decea_bndmet (estação D6594, precipitação diária I006)
 const char *OWM_URL = "https://pro.openweathermap.org/data/2.5/forecast?lat=-20.1433&lon=-44.1997&units=metric&cnt="; // Fonte: openweathermap_forecast5 (Brumadinho-MG)
-const char *API_LEITURAS = "/leituras"; // Fonte: plano v3, Parte 4 (POST /leituras)
+const char *API_LEITURAS = "/leituras"; // Fonte: rota do backend (POST /leituras)
 
 // =====================================================================================
 //  TIPOS E ESTADO
@@ -465,9 +465,9 @@ Nivel avaliarNivel(const Leitura &l) {
     return VERDE;
   }
   if (!l.sensorOk && chuva) return nivelPorChuva(p); // higrômetro com falha: só chuva
-  if (l.sensorOk && !chuva) return (l.S >= S2) ? AMARELO : VERDE; // caso especial (Parte 2.5)
+  if (l.sensorOk && !chuva) return (l.S >= S2) ? AMARELO : VERDE; // caso especial (S >= S2 sem dados de chuva)
   // Sem higrômetro E sem chuva: a Eq. 3 não pode ser avaliada. Decisão do orientador
-  // (03/10/2026): AMARELO por precaução, mesma lógica do caso especial (Parte 2.5).
+  // (03/10/2026): AMARELO por precaução, mesma lógica do caso especial.
   return AMARELO;
 }
 
@@ -478,7 +478,7 @@ void acionarAlertaLocal(Nivel n) {
   digitalWrite(PIN_LED_VERDE, n == VERDE);
   digitalWrite(PIN_LED_AMARELO, n == AMARELO);
   digitalWrite(PIN_LED_VERMELHO, n == VERMELHO);
-  // Buzzer só no VERMELHO (Parte 4 do plano). tone() só é chamado na mudança de estado.
+  // Buzzer só no VERMELHO. tone() só é chamado na mudança de estado.
   static bool buzzerLigado = false;
   bool ligar = (n == VERMELHO);
   if (ligar && !buzzerLigado) tone(PIN_BUZZER, FREQ_BUZZER_HZ);
